@@ -1,0 +1,2035 @@
+commit aaacd4eee88f6ed9804285334be64f652797292e
+Author: xie.baoyou <scxby@163.com>
+Date:   Sat Oct 21 22:47:57 2017 +0800
+
+    [comment-timer] æ—¶é’Ÿæ¡†æ¶ç¬¬ä¸€éƒ¨åˆ†
+
+diff --git a/include/linux/clocksource.h b/include/linux/clocksource.h
+old mode 100644
+new mode 100755
+index 278dd27..1567204
+--- a/include/linux/clocksource.h
++++ b/include/linux/clocksource.h
+@@ -81,6 +81,9 @@ struct clocksource {
+ 	const char *name;
+ 	struct list_head list;
+ 	int rating;
++	/**
++	 * ÆôÓÃÊ±ÖÓÔ´
++	 */
+ 	int (*enable)(struct clocksource *cs);
+ 	void (*disable)(struct clocksource *cs);
+ 	unsigned long flags;
+@@ -106,6 +109,9 @@ struct clocksource {
+ #define CLOCK_SOURCE_WATCHDOG			0x10
+ #define CLOCK_SOURCE_VALID_FOR_HRES		0x20
+ #define CLOCK_SOURCE_UNSTABLE			0x40
++/**
++ * ¹ÒÆğÊ±»á¼ÌĞøÔËĞĞ¶ø²»Í£Ö¹
++ */
+ #define CLOCK_SOURCE_SUSPEND_NONSTOP		0x80
+ #define CLOCK_SOURCE_RESELECT			0x100
+ 
+diff --git a/include/linux/posix-clock.h b/include/linux/posix-clock.h
+old mode 100644
+new mode 100755
+index 34c4498..84ba96e
+--- a/include/linux/posix-clock.h
++++ b/include/linux/posix-clock.h
+@@ -114,12 +114,25 @@ struct posix_clock_operations {
+  * structure, obtaining a reference to it during callbacks using
+  * container_of().
+  */
++/**
++ * POSIX¶¯Ì¬Ê±ÖÓ
++ * Óë´«Í³Ê±ÖÓÏà±È£¬Ëü¿ÉÒÔ´´½¨¸ü¶àµÄÊ±ÖÓ
++ */
+ struct posix_clock {
++	/**
++	 * ²Ù×÷º¯Êı¼¯
++	 * ·Ötimer,clock,procÏà¹Øº¯Êı
++	 */
+ 	struct posix_clock_operations ops;
++	/* Ê±ÖÓ¶ÔÓ¦µÄ×Ö·ûÉè±¸ */
+ 	struct cdev cdev;
++	/* ÒıÓÃ¼ÆÊı */
+ 	struct kref kref;
++	/* ±£»¤µ×²ãÉè±¸µÄ×´Ì¬ */
+ 	struct rw_semaphore rwsem;
++	/* µ×²ãÉè±¸ÊÇ·ñ±»ÒÆ³ı */
+ 	bool zombie;
++	/* µ±ÒıÓÃ¼ÆÊı±äÎª0Ê±£¬»Øµ÷´Ëº¯ÊıÇå³ıµ×²ãÊı¾İ½á¹¹ */
+ 	void (*release)(struct posix_clock *clk);
+ };
+ 
+diff --git a/include/linux/posix-timers.h b/include/linux/posix-timers.h
+old mode 100644
+new mode 100755
+index 907f3fd..f62894a
+--- a/include/linux/posix-timers.h
++++ b/include/linux/posix-timers.h
+@@ -59,26 +59,65 @@ struct cpu_timer_list {
+ #define CLOCKID_TO_FD(clk)	((unsigned int) ~((clk) >> 3))
+ 
+ /* POSIX.1b interval timer structure. */
++/**
++ * Ïß³Ì´´½¨µÄposixÊ±ÖÓ
++ */
+ struct k_itimer {
++	/* ½ø³ÌÁ´±í½Úµã */
+ 	struct list_head list;		/* free/ allocate list */
++	/* È«¾Ö¹şÏ£±í½Úµã */
+ 	struct hlist_node t_hash;
++	/**
++	 * ±£»¤±¾Êı¾İ½á¹¹µÄspin lock
++	 */
+ 	spinlock_t it_lock;
++	/**
++	 * ÒÔÏµÍ³ÖĞÄÄÒ»¸öclockÎª±ê×¼À´¼ÆËã³¬Ê±Ê±¼ä
++	 */
+ 	clockid_t it_clock;		/* which timer type */
++	/* imerµÄID£¬ÔÚÒ»¸ö½ø³ÌÖĞÎ¨Ò»±êÊ¶¸Ãtimer */
+ 	timer_t it_id;			/* timer id */
++	/**
++	 * ÓÃÓÚoverrunÖ§³Ö
++	 * µ±Ç°µÄoverrun¼ÆÊı
++	 */
+ 	int it_overrun;			/* overrun on pending signal  */
++	/**
++	 * ÉÏ´Îoverrun¼ÆÊı
++	 */
+ 	int it_overrun_last;		/* overrun on last delivered signal */
++	/**
++	 * ¸Ãtimer¶ÔÓ¦ĞÅºÅ¹ÒÈësignal pendingµÄ×´Ì¬
++	 * LSB bit±êÊ¶¸ÃsignalÒÑ¾­¹ÒÈësignal pending¶ÓÁĞ£¬ÆäËûµÄbit×÷ÎªĞÅºÅµÄË½ÓĞÊı¾İ
++	 */
+ 	int it_requeue_pending;		/* waiting to requeue this timer */
+ #define REQUEUE_PENDING 1
++	/**
++	 * timer³¬ÆÚºóÈçºÎÒì²½Í¨Öª¸Ã½ø³Ì
++	 * ÈçSIGEV_SIGNAL
++	 */
+ 	int it_sigev_notify;		/* notify word of sigevent struct */
++	/**
++	 * ¸Ãtimer¶ÔÓ¦µÄsignal descriptor
++	 */
+ 	struct signal_struct *it_signal;
++	/**
++	 * ´¦ÀítimerµÄÏß³Ì
++	 */
+ 	union {
+ 		struct pid *it_pid;	/* pid of process to send signal to */
+ 		struct task_struct *it_process;	/* for clock_nanosleep */
+ 	};
++	/* ³¬ÆÚºó£¬¸Ãsigquue³ÉÔ±»á¹ÒÈësignal pending¶ÓÁĞ */
+ 	struct sigqueue *sigq;		/* signal queue entry. */
++	/**
++	 * timer intervalÏà¹ØµÄĞÅÏ¢
++	 */
+ 	union {
++		/* real time clock */
+ 		struct {
+ 			struct hrtimer timer;
++			/* one shotÎª0£¬·ñÔòÎªÖÜÆÚ */
+ 			ktime_t interval;
+ 		} real;
+ 		struct cpu_timer_list cpu;
+@@ -88,6 +127,7 @@ struct k_itimer {
+ 			unsigned long incr;
+ 			unsigned long expires;
+ 		} mmtimer;
++		/* alarm timerÏà¹ØµÄ³ÉÔ± */
+ 		struct {
+ 			struct alarm alarmtimer;
+ 			ktime_t interval;
+@@ -96,21 +136,40 @@ struct k_itimer {
+ 	} it;
+ };
+ 
++/**
++ * Ê±ÖÓÃèÊö·û
++ */
+ struct k_clock {
++	/* »ñÈ¡Ê±¼ä¾«¶È */
+ 	int (*clock_getres) (const clockid_t which_clock, struct timespec *tp);
++	/**
++	 * »ñÈ¡ºÍÉè¶¨µ±Ç°µÄÊ±¼ä
++	 */
+ 	int (*clock_set) (const clockid_t which_clock,
+ 			  const struct timespec *tp);
+ 	int (*clock_get) (const clockid_t which_clock, struct timespec * tp);
++	/**
++	 * ¸ù¾İÍâ²¿µÄ¾«È·Ê±¼äĞÅÏ¢¶Ô±¾clock½øĞĞµ÷Õû
++	 */
+ 	int (*clock_adj) (const clockid_t which_clock, struct timex *tx);
+ 	int (*timer_create) (struct k_itimer *timer);
++	/**
++	 * Ë¯ÃßÌØ¶¨Ê±¼ä
++	 */
+ 	int (*nsleep) (const clockid_t which_clock, int flags,
+ 		       struct timespec *, struct timespec __user *);
+ 	long (*nsleep_restart) (struct restart_block *restart_block);
++	/**
++	 * Posix TimerÏà¹Ø
++	 */
+ 	int (*timer_set) (struct k_itimer * timr, int flags,
+ 			  struct itimerspec * new_setting,
+ 			  struct itimerspec * old_setting);
+ 	int (*timer_del) (struct k_itimer * timr);
+ #define TIMER_RETRY 1
++	/**
++	 * »ñÈ¡Ê±ÖÓ»¹ÓĞ¶à³¤Ê±¼äµ½ÆÚ
++	 */
+ 	void (*timer_get) (struct k_itimer * timr,
+ 			   struct itimerspec * cur_setting);
+ };
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+old mode 100644
+new mode 100755
+index 7669e8d..a159c37
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -679,7 +679,9 @@ struct signal_struct {
+ 	unsigned int		has_child_subreaper:1;
+ 
+ 	/* POSIX.1b Interval Timers */
++	/* ½ø³Ì×î½ü·ÖÅäµÄposixÊ±ÖÓID£¬²ÎÕÕposix_timer_add */
+ 	int			posix_timer_id;
++	/* posix½ø³ÌµÄÊ±ÖÓÁ´±íÍ· */
+ 	struct list_head	posix_timers;
+ 
+ 	/* ITIMER_REAL timer for the process */
+diff --git a/include/linux/time.h b/include/linux/time.h
+old mode 100644
+new mode 100755
+index beebe3a..c1cc5cc
+--- a/include/linux/time.h
++++ b/include/linux/time.h
+@@ -157,6 +157,9 @@ extern void do_sys_times(struct tms *);
+  * Similar to the struct tm in userspace <time.h>, but it needs to be here so
+  * that the kernel source is self contained.
+  */
++/**
++ * ÈËÀàÊÀ½çµÄÊ±¼ä
++ */
+ struct tm {
+ 	/*
+ 	 * the number of seconds after the minute, normally in the range
+diff --git a/include/linux/time64.h b/include/linux/time64.h
+old mode 100644
+new mode 100755
+index 367d5af..8e1722c
+--- a/include/linux/time64.h
++++ b/include/linux/time64.h
+@@ -170,9 +170,15 @@ static inline struct timespec64 timespec64_sub(struct timespec64 lhs,
+ static inline bool timespec64_valid(const struct timespec64 *ts)
+ {
+ 	/* Dates before 1970 are bogus */
++	/**
++	 * ÃëÊıÖµÒª´óÓÚµÈÓÚ0
++	 */
+ 	if (ts->tv_sec < 0)
+ 		return false;
+ 	/* Can't have more nanoseconds then a second */
++	/**
++	 * ÄÉÃëÖµÒªĞ¡ÓÚNSEC_PER_SEC
++	 */
+ 	if ((unsigned long)ts->tv_nsec >= NSEC_PER_SEC)
+ 		return false;
+ 	return true;
+@@ -183,6 +189,9 @@ static inline bool timespec64_valid_strict(const struct timespec64 *ts)
+ 	if (!timespec64_valid(ts))
+ 		return false;
+ 	/* Disallow values that could overflow ktime_t */
++	/**
++	 * ÃëÊıÖµĞ¡ÓÚKTIME_SEC_MAX
++	 */
+ 	if ((unsigned long long)ts->tv_sec >= KTIME_SEC_MAX)
+ 		return false;
+ 	return true;
+diff --git a/include/linux/timekeeper_internal.h b/include/linux/timekeeper_internal.h
+old mode 100644
+new mode 100755
+index 2524722..d7fba2e
+--- a/include/linux/timekeeper_internal.h
++++ b/include/linux/timekeeper_internal.h
+@@ -80,21 +80,47 @@ struct tk_read_base {
+  * wall_to_monotonic is no longer the boot time, getboottime must be
+  * used instead.
+  */
++/**
++ * Î¬»¤time line£¬real time clock£¬monotonic clock¡¢monotonic raw clockµÄÃèÊö·û
++ */
+ struct timekeeper {
++	/**
++	 * ÓÃÓÚCLOCK_MONOTONICºÍCLOCK_MONOTONIC_RAWµÄÓ²¼ş
++	 */
+ 	struct tk_read_base	tkr_mono;
+ 	struct tk_read_base	tkr_raw;
++	/**
++	 * CLOCK_REALTIMEÀàĞÍµÄÏµÍ³Ê±ÖÓ
++	 */
+ 	u64			xtime_sec;
+ 	unsigned long		ktime_sec;
++	/**
++	 * CLOCK_MONOTONICÀàĞÍµÄÏµÍ³Ê±ÖÓ¡£
++	 * ¶¨ÒåÁËmonotonic clockµ½real time clockµÄÆ«ÒÆ
++	 */
+ 	struct timespec64	wall_to_monotonic;
+ 	ktime_t			offs_real;
++	/**
++	 * ÏµÍ³Æô¶¯Ê±¼ä
++	 */
+ 	ktime_t			offs_boot;
+ 	ktime_t			offs_tai;
++	/**
++	 * CLOCK_TAIÀàĞÍµÄÏµÍ³Ê±ÖÓ¡£
++	 * ¼´Ô­×ÓÖÓ
++	 */
+ 	s32			tai_offset;
+ 	unsigned int		clock_was_set_seq;
+ 	ktime_t			next_leap_ktime;
++	/**
++	 * CLOCK_MONOTONIC_RAWÀàĞÍµÄÏµÍ³Ê±ÖÓ
++	 */
+ 	struct timespec64	raw_time;
+ 
+ 	/* The following members are for timekeeping internal use */
++	/**
++	 * Ã¿¸ötick¶ÔÓ¦µÄcycles
++	 */
+ 	cycle_t			cycle_interval;
+ 	u64			xtime_interval;
+ 	s64			xtime_remainder;
+@@ -105,6 +131,9 @@ struct timekeeper {
+ 	 * mid-tick, and we don't want to apply that new value to
+ 	 * the tick in progress.
+ 	 */
++	/**
++	 * NTPÏà¹Ø×Ö¶Î
++	 */
+ 	u64			ntp_tick;
+ 	/* Difference between accumulated time and NTP time in ntp
+ 	 * shifted nano seconds. */
+diff --git a/include/linux/timekeeping.h b/include/linux/timekeeping.h
+old mode 100644
+new mode 100755
+index ba0ae09..7c65f61
+--- a/include/linux/timekeeping.h
++++ b/include/linux/timekeeping.h
+@@ -22,6 +22,10 @@ struct timespec64 current_kernel_time64(void);
+ /* does not take xtime_lock */
+ struct timespec __current_kernel_time(void);
+ 
++/**
++ * ÀàËÆÓÚgettimeofday
++ * µ«ÊÇ¾«¶ÈµÍ£¬Ğ§ÂÊÉÔÎ¢¿ìÒ»µã¡£
++ */
+ static inline struct timespec current_kernel_time(void)
+ {
+ 	struct timespec64 now = current_kernel_time64();
+@@ -46,6 +50,9 @@ extern void getboottime64(struct timespec64 *ts);
+ /**
+  * Deprecated. Use do_settimeofday64().
+  */
++/**
++ * ÉèÖÃÊ±¼ä
++ */
+ static inline int do_settimeofday(const struct timespec *ts)
+ {
+ 	return do_settimeofday64(ts);
+@@ -66,6 +73,9 @@ static inline void ktime_get_ts(struct timespec *ts)
+ 	ktime_get_ts64(ts);
+ }
+ 
++/**
++ * »ñÈ¡real time clockµÄÊ±¼äÖµ
++ */
+ static inline void ktime_get_real_ts(struct timespec *ts)
+ {
+ 	getnstimeofday64(ts);
+@@ -76,6 +86,9 @@ static inline void getrawmonotonic(struct timespec *ts)
+ 	getrawmonotonic64(ts);
+ }
+ 
++/**
++ * »ñÈ¡µÍ¾«¶ÈµÄmonotonic clock
++ */
+ static inline struct timespec get_monotonic_coarse(void)
+ {
+ 	return get_monotonic_coarse64();
+@@ -174,6 +187,9 @@ extern u32 ktime_get_resolution_ns(void);
+ /**
+  * ktime_get_real - get the real (wall-) time in ktime_t format
+  */
++/**
++ * »ñÈ¡real time clockµÄÊ±¼äÖµ
++ */
+ static inline ktime_t ktime_get_real(void)
+ {
+ 	return ktime_get_with_offset(TK_OFFS_REAL);
+@@ -185,6 +201,12 @@ static inline ktime_t ktime_get_real(void)
+  * This is similar to CLOCK_MONTONIC/ktime_get, but also includes the
+  * time spent in suspend.
+  */
++/**
++ * »ñÈ¡boot clockµÄÊ±¼äÖµ
++ * monotonic clock£¬ËüÊÇ²»¼ÇÂ¼ÏµÍ³Ë¯ÃßÊ±¼äµÄ
++ * Òò´Ëmonotonic clockµÃµ½µÄÊÇÒ»¸ösystem uptime¡£
++ * ¶øboot clock¼ÆËãË¯ÃßÊ±¼ä£¬Ö±µ½ÏµÍ³reboot¡£
++ */
+ static inline ktime_t ktime_get_boottime(void)
+ {
+ 	return ktime_get_with_offset(TK_OFFS_BOOT);
+@@ -193,6 +215,10 @@ static inline ktime_t ktime_get_boottime(void)
+ /**
+  * ktime_get_clocktai - Returns the TAI time of day in ktime_t format
+  */
++/**
++ * »ñÈ¡TAI clockµÄÊ±¼äÖµ
++ * Ô­×ÓÖÓ£¬²»¿ÉĞŞ¸Ä
++ */
+ static inline ktime_t ktime_get_clocktai(void)
+ {
+ 	return ktime_get_with_offset(TK_OFFS_TAI);
+@@ -237,6 +263,10 @@ extern u64 ktime_get_raw_fast_ns(void);
+ /*
+  * Timespec interfaces utilizing the ktime based ones
+  */
++/**
++ * »ñµÃboottime£¬Óëktime_get_boottimeÀàËÆ
++ * µ«ÊÇ·µ»Ø¸ñÊ½²»Í¬
++ */
+ static inline void get_monotonic_boottime(struct timespec *ts)
+ {
+ 	*ts = ktime_to_timespec(ktime_get_boottime());
+diff --git a/include/linux/types.h b/include/linux/types.h
+old mode 100644
+new mode 100755
+index c314989..a70ad5d
+--- a/include/linux/types.h
++++ b/include/linux/types.h
+@@ -66,6 +66,10 @@ typedef __kernel_ptrdiff_t	ptrdiff_t;
+ 
+ #ifndef _TIME_T
+ #define _TIME_T
++/**
++ * POSIX±ê×¼¶¨ÒåµÄÒ»¸öÒÔÃë¼ÆµÄÊ±¼äÖµ
++ * ´ÓUTCÊ±¼äµ½µ±Ç°Ê±¼äµÄÃëÊı
++ */
+ typedef __kernel_time_t		time_t;
+ #endif
+ 
+diff --git a/include/uapi/asm-generic/siginfo.h b/include/uapi/asm-generic/siginfo.h
+old mode 100644
+new mode 100755
+index 1e35520..921f330
+--- a/include/uapi/asm-generic/siginfo.h
++++ b/include/uapi/asm-generic/siginfo.h
+@@ -164,6 +164,9 @@ typedef struct siginfo {
+ #define SI_USER		0		/* sent by kill, sigsend, raise */
+ #define SI_KERNEL	0x80		/* sent by the kernel from somewhere */
+ #define SI_QUEUE	-1		/* sent by sigqueue */
++/**
++ * ĞÅºÅÊÇÓÉÓÚposix timer¶ø²úÉúµÄ¡£
++ */
+ #define SI_TIMER __SI_CODE(__SI_TIMER,-2) /* sent by timer expiration */
+ #define SI_MESGQ __SI_CODE(__SI_MESGQ,-3) /* sent by real time mesq state change */
+ #define SI_ASYNCIO	-4		/* sent by AIO completion */
+@@ -265,9 +268,25 @@ typedef struct siginfo {
+  * thread manager then catches and does the appropriate nonsense.
+  * However, everything is written out here so as to not get lost.
+  */
++/**
++ * Ê¹ÓÃsinalÕâÑùµÄÒì²½Í¨Öª·½Ê½¡£
++ * ·¢ËÍµÄĞÅºÅÓÉsigev_signo¶¨Òå¡£
++ * Èç¹û·¢ËÍµÄÊÇrealtime signal£¬¸ÃĞÅºÅµÄ¸½¼ÓÊı¾İÓÉsigev_value¶¨Òå¡£
++ */
+ #define SIGEV_SIGNAL	0	/* notify via signal */
++/**
++ * ²»ĞèÒªÒì²½Í¨Öª
++ * ³ÌĞò×Ô¼ºµ÷ÓÃtimer_gettimeÀ´ÂÖÑ¯timerµÄµ±Ç°×´Ì¬
++ */
+ #define SIGEV_NONE	1	/* other notification: meaningless */
++/**
++ * ´´½¨Ò»¸öÏß³ÌÖ´ĞĞtimer³¬ÆÚcallbackº¯Êı
++ */
+ #define SIGEV_THREAD	2	/* deliver via thread creation */
++/**
++ * ĞĞÎªºÍSIGEV_SIGNALÀàËÆ
++ * ²»¹ı·¢ËÍµÄĞÅºÅ±»ËÍ´ï½ø³ÌÄÚµÄÒ»¸öÖ¸¶¨µÄÏß³Ì
++ */
+ #define SIGEV_THREAD_ID 4	/* deliver to thread */
+ 
+ /*
+@@ -283,15 +302,32 @@ typedef struct siginfo {
+ 		/ sizeof(int))
+ 
+ typedef struct sigevent {
++	/**
++	 * sigev_notify = SIGEV_SIGNALÊ±£¬²¢ÇÒ·¢ËÍµÄÊÇÊµÊ±ĞÅºÅÊ±£¬
++	 * Ëù·¢ËÍµÄĞÅºÅ¸½¼ÓÊı¾İ 
++	 */
+ 	sigval_t sigev_value;
++	/**
++	 * sigev_notify = SIGEV_SIGNALÊ±£¬Ëù·¢ËÍµÄĞÅºÅ
++	 */
+ 	int sigev_signo;
++	/**
++	 * time³¬Ê±ºó£¬ÈçºÎÍ¨ÖªÏß³Ì
++	 * ÈçSIGEV_NONE
++	 */
+ 	int sigev_notify;
+ 	union {
+ 		int _pad[SIGEV_PAD_SIZE];
++		/**
++		 * µ±sigev_notify = SIGEV_THREAD_IDÊ±£¬½ÓÊÕĞÅºÅµÄÏß³ÌID
++		 */
+ 		 int _tid;
+ 
+ 		struct {
+ 			void (*_function)(sigval_t);
++			/**
++			 * sigev_notify = SIGEV_THREADÊ±£¬Ëù´´½¨Ïß³ÌµÄÊôĞÔ
++			 */
+ 			void *_attribute;	/* really pthread_attr_t */
+ 		} _sigev_thread;
+ 	} _sigev_un;
+diff --git a/include/uapi/linux/time.h b/include/uapi/linux/time.h
+old mode 100644
+new mode 100755
+index e75e1b6..579bc00
+--- a/include/uapi/linux/time.h
++++ b/include/uapi/linux/time.h
+@@ -6,12 +6,19 @@
+ 
+ #ifndef _STRUCT_TIMESPEC
+ #define _STRUCT_TIMESPEC
++/**
++ * ÄÉÃë¾«¶ÈµÄÊ±¼ä
++ * Âú×ãPOSIX±ê×¼
++ */
+ struct timespec {
+ 	__kernel_time_t	tv_sec;			/* seconds */
+ 	long		tv_nsec;		/* nanoseconds */
+ };
+ #endif
+ 
++/**
++ * Î¢Ãë¾«¶ÈµÄÊ±¼ä
++ */
+ struct timeval {
+ 	__kernel_time_t		tv_sec;		/* seconds */
+ 	__kernel_suseconds_t	tv_usec;	/* microseconds */
+@@ -27,8 +34,21 @@ struct timezone {
+  * Names of the interval timers, and structure
+  * defining a timer setting:
+  */
++/**
++ * real-time
++ * »ùÓÚCLOCK_REALTIME¼ÆÊ±£¬³¬Ê±ºó·¢ËÍSIGALRMĞÅºÅ
++ * ºÍalarmº¯ÊıÒ»Ñù
++ */
+ #define	ITIMER_REAL		0
++/**
++ * Ö»ÓĞµ±¸Ã½ø³ÌµÄÓÃ»§¿Õ¼ä´úÂëÖ´ĞĞµÄÊ±ºò²Å¼ÆÊ±
++ * ³¬Ê±ºó·¢ËÍSIGVTALRMĞÅºÅ
++ */
+ #define	ITIMER_VIRTUAL		1
++/**
++ * Ö»ÓĞ¸Ã½ø³ÌÖ´ĞĞµÄÊ±ºò²Å¼ÆÊ±£¬²»ÂÛÊÇÖ´ĞĞÓÃ»§¿Õ¼ä´úÂë»¹ÊÇÏİÈëÄÚºËÖ´ĞĞ£¨ÀıÈçÏµÍ³µ÷ÓÃ£©
++ * ³¬Ê±ºó·¢ËÍSIGPROFĞÅºÅ¡£
++ */
+ #define	ITIMER_PROF		2
+ 
+ struct itimerspec {
+@@ -36,25 +56,70 @@ struct itimerspec {
+ 	struct timespec it_value;	/* timer expiration */
+ };
+ 
++/**
++ * getitimerµÄ¶¨Ê±Æ÷Öµ
++ */
+ struct itimerval {
++	/**
++	 * ¼ä¸ôÊ±¼ä
++	 */
+ 	struct timeval it_interval;	/* timer interval */
++	/**
++	 * ÏÂ´Î¶¨Ê±Æ÷¿ªÊ¼Ê±¼ä
++	 */
+ 	struct timeval it_value;	/* current value */
+ };
+ 
+ /*
+  * The IDs of the various system clocks (for POSIX.1b interval timers):
+  */
++/**
++ * ÕæÊµÊÀ½çµÄÊ±ÖÓ£¬¼´Ç½ÉÏÊ±ÖÓ
++ * ¿ÉÒÔ¶Ô¸ÃÏµÍ³Ê±ÖÓ½øĞĞĞŞ¸Ä£¬²úÉú²»Á¬ĞøµÄÊ±¼ä¼ä¶Ïµã¡£
++ * Ò²¿ÉÒÔÍ¨¹ıNTP¶Ô¸ÃÊ±ÖÓ½øĞĞµ÷Õû
++ */
+ #define CLOCK_REALTIME			0
++/**
++ * ÕæÊµÊÀ½çµÄÊ±ÖÓ£¬µ¥µ÷µİÔö¡£
++ * ²»ÄÜÊÖ¶¯µ÷Õû£¬µ«ÊÇ¿ÉÒÔÍ¨¹ıNTPĞ­Òé½øĞĞµ÷Õû
++ * Æä»ù×¼µã²»Ò»¶¨ÊÇlinux epoch
++ * Ò»°ã»á°ÑÏµÍ³Æô¶¯µÄÊ±¼äµãÉè¶¨ÎªÆä»ù×¼µã
++ */
+ #define CLOCK_MONOTONIC			1
++/**
++ * »ùÓÚ½ø³Ì»òÕßÏß³ÌÖ´ĞĞÊ±¼äÀ´¼ÆËãµÄÊ±¼ä
++ * ²Î¿¼clock_getcpuclockid
++ */
+ #define CLOCK_PROCESS_CPUTIME_ID	2
+ #define CLOCK_THREAD_CPUTIME_ID		3
++/**
++ * ÓëCLOCK_MONOTONICÀàËÆ
++ * µ«ÊÇ²»ÔÊĞíNTP¶ÔÆä½øĞĞµ÷Õû
++ * Æô¶¯Ê±ÉèÖÃÎª0
++ */
+ #define CLOCK_MONOTONIC_RAW		4
++/**
++ * CLOCK_REALTIME_COARSE¡¢CLOCK_MONOTONIC_COARSEµÄ¸ÅÄîºÍCLOCK_REALTIME¡¢CLOCK_MONOTONICÀàËÆ
++ * µ«ÊÇ¾«¶ÈÊÇ±È½Ï´ÖµÄ°æ±¾¡£
++ */
+ #define CLOCK_REALTIME_COARSE		5
+ #define CLOCK_MONOTONIC_COARSE		6
++/**
++ * ºÍCLOCK_MONOTONICÀàËÆ£¬Ò²ÊÇµ¥µ÷ÉÏÕÇ
++ * ÔÚÏµÍ³³õÊ¼»¯µÄÊ±ºòÉè¶¨µÄ»ù×¼ÊıÖµÊÇ0
++ * ²»¹ıCLOCK_BOOTTIME¼ÆËãÏµÍ³suspendµÄÊ±¼ä
++ */
+ #define CLOCK_BOOTTIME			7
++/**
++ * Ö÷ÒªÓÃÓÚAlarmtimer£¬ÕâÖÖtimerÊÇ»ùÓÚRTCµÄ
++ */
+ #define CLOCK_REALTIME_ALARM		8
+ #define CLOCK_BOOTTIME_ALARM		9
+ #define CLOCK_SGI_CYCLE			10	/* Hardware specific */
++/**
++ * Ô­×ÓÖÓµÄÊ±¼ä
++ * ºÍ»ùÓÚUTCµÄCLOCK_REALTIMEÀàËÆ£¬²»¹ıÃ»ÓĞÈòÃë
++ */
+ #define CLOCK_TAI			11
+ 
+ #define MAX_CLOCKS			16
+diff --git a/kernel/compat.c b/kernel/compat.c
+old mode 100644
+new mode 100755
+index 333d364..a9f7a2d
+--- a/kernel/compat.c
++++ b/kernel/compat.c
+@@ -754,6 +754,11 @@ COMPAT_SYSCALL_DEFINE2(clock_settime, clockid_t, which_clock,
+ 	return err;
+ }
+ 
++/**
++ * »ñÈ¡´Ólinux epochµ½µ±Ç°Ê±¼äµãµÄÃëÊıÒÔ¼°Î¢ÃëÊı
++ * ĞÂµÄ½Ó¿Ú
++ * 	which_clock:	ÈçCLOCK_REALTIME
++ */
+ COMPAT_SYSCALL_DEFINE2(clock_gettime, clockid_t, which_clock,
+ 		       struct compat_timespec __user *, tp)
+ {
+@@ -835,6 +840,11 @@ static long compat_clock_nanosleep_restart(struct restart_block *restart)
+ 	return err;
+ }
+ 
++/**
++ * ÀàËÆÓÚnanosleep
++ * µ«ÊÇÔÊĞíÖ¸¶¨clockid
++ * flag:¾ø¶ÔÊ±¼ä»¹ÊÇÏà¶ÔÊ±¼ä
++ */
+ COMPAT_SYSCALL_DEFINE4(clock_nanosleep, clockid_t, which_clock, int, flags,
+ 		       struct compat_timespec __user *, rqtp,
+ 		       struct compat_timespec __user *, rmtp)
+@@ -1065,6 +1075,9 @@ COMPAT_SYSCALL_DEFINE1(stime, compat_time_t __user *, tptr)
+ 
+ #endif /* __ARCH_WANT_COMPAT_SYS_TIME */
+ 
++/**
++ * µ÷ÕûCLOCK_REALTIMEÊ±ÖÓ
++ */
+ COMPAT_SYSCALL_DEFINE1(adjtimex, struct compat_timex __user *, utp)
+ {
+ 	struct timex txc;
+diff --git a/kernel/signal.c b/kernel/signal.c
+old mode 100644
+new mode 100755
+index 26b4200..1a7bb77
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -657,6 +657,7 @@ int dequeue_signal(struct task_struct *tsk, sigset_t *mask, siginfo_t *info)
+ 		 */
+ 		current->jobctl |= JOBCTL_STOP_DEQUEUED;
+ 	}
++	/* Posix¶¨Ê±Æ÷ĞÅºÅ */
+ 	if ((info->si_code & __SI_MASK) == __SI_TIMER && info->si_sys_private) {
+ 		/*
+ 		 * Release the siglock to ensure proper locking order
+@@ -665,6 +666,7 @@ int dequeue_signal(struct task_struct *tsk, sigset_t *mask, siginfo_t *info)
+ 		 * about to disable them again anyway.
+ 		 */
+ 		spin_unlock(&tsk->sighand->siglock);
++		/* ´¦ÀíPosix¶¨Ê±Æ÷£¬Æô¶¯ÏÂÒ»´ÎÊ±ÖÓ */
+ 		do_schedule_next_timer(info);
+ 		spin_lock(&tsk->sighand->siglock);
+ 	}
+diff --git a/kernel/time/hrtimer.c b/kernel/time/hrtimer.c
+old mode 100644
+new mode 100755
+index b92b391..acd4d23
+--- a/kernel/time/hrtimer.c
++++ b/kernel/time/hrtimer.c
+@@ -1459,6 +1459,9 @@ void hrtimer_init_sleeper(struct hrtimer_sleeper *sl, struct task_struct *task)
+ }
+ EXPORT_SYMBOL_GPL(hrtimer_init_sleeper);
+ 
++/**
++ * ÄÉÃë¼¶µÄË¯Ãß
++ */
+ static int __sched do_nanosleep(struct hrtimer_sleeper *t, enum hrtimer_mode mode)
+ {
+ 	hrtimer_init_sleeper(t, current);
+diff --git a/kernel/time/itimer.c b/kernel/time/itimer.c
+old mode 100644
+new mode 100755
+index 8d262b4..da7c0a1
+--- a/kernel/time/itimer.c
++++ b/kernel/time/itimer.c
+@@ -76,6 +76,11 @@ static void get_cpu_itimer(struct task_struct *tsk, unsigned int clock_id,
+ 	cputime_to_timeval(cinterval, &value->it_interval);
+ }
+ 
++/**
++ * ÀàËÆÓÚalarm
++ * ÒÑ¾­·ÏÆú
++ * 	which:	Ê¹ÓÃÄÄ¸ötimer£¬ÈçITIMER_REAL
++ */
+ int do_getitimer(int which, struct itimerval *value)
+ {
+ 	struct task_struct *tsk = current;
+diff --git a/kernel/time/posix-clock.c b/kernel/time/posix-clock.c
+old mode 100644
+new mode 100755
+index ce033c7..e13a5f8
+--- a/kernel/time/posix-clock.c
++++ b/kernel/time/posix-clock.c
+@@ -206,6 +206,9 @@ static const struct file_operations posix_clock_file_operations = {
+ #endif
+ };
+ 
++/**
++ * ×¢²áposix¶¯Ì¬Ê±ÖÓ
++ */
+ int posix_clock_register(struct posix_clock *clk, dev_t devid)
+ {
+ 	int err;
+@@ -229,6 +232,9 @@ static void delete_clock(struct kref *kref)
+ 		clk->release(clk);
+ }
+ 
++/**
++ * ×¢Ïúposix¶¯Ì¬Ê±ÖÓ
++ */
+ void posix_clock_unregister(struct posix_clock *clk)
+ {
+ 	cdev_del(&clk->cdev);
+diff --git a/kernel/time/posix-cpu-timers.c b/kernel/time/posix-cpu-timers.c
+old mode 100644
+new mode 100755
+index 892e3da..6d2ded3
+--- a/kernel/time/posix-cpu-timers.c
++++ b/kernel/time/posix-cpu-timers.c
+@@ -32,15 +32,22 @@ static int check_clock(const clockid_t which_clock)
+ {
+ 	int error = 0;
+ 	struct task_struct *p;
++	/**
++	 * Ç°29Î»ÊÇ½ø³ÌIDµÄ·´Âë
++	 * ÓÃ·´ÂëÊÇÎªÁËÈ·±£ËüÊÇÒ»¸ö¸ºÊı
++	 */
+ 	const pid_t pid = CPUCLOCK_PID(which_clock);
+ 
++	/* Ö»ÓĞÈı¸ö¹Ì¶¨CLOCK */
+ 	if (CPUCLOCK_WHICH(which_clock) >= CPUCLOCK_MAX)
+ 		return -EINVAL;
+ 
++	/* µ±Ç°½ø³ÌµÄÊ±ÖÓ */
+ 	if (pid == 0)
+ 		return 0;
+ 
+ 	rcu_read_lock();
++	/* ²éÕÒpid¶ÔÓ¦µÄÏß³Ì£¬¿´ÆäÊÇ·ñÕæµÄ´æÔÚ */
+ 	p = find_task_by_vpid(pid);
+ 	if (!p || !(CPUCLOCK_PERTHREAD(which_clock) ?
+ 		   same_thread_group(p, current) : has_group_leader_pid(p))) {
+@@ -143,16 +150,20 @@ static inline unsigned long long virt_ticks(struct task_struct *p)
+ static int
+ posix_cpu_clock_getres(const clockid_t which_clock, struct timespec *tp)
+ {
++	/* ¼ì²é²ÎÊı */
+ 	int error = check_clock(which_clock);
+-	if (!error) {
++	if (!error) {/* IDÕıÈ· */
+ 		tp->tv_sec = 0;
++		/* Ä¬ÈÏ¾«¶È¾ÍÊÇHZ */
+ 		tp->tv_nsec = ((NSEC_PER_SEC + HZ - 1) / HZ);
++		/* ¶ÔSCHEDÊ±ÖÓÀ´Ëµ */
+ 		if (CPUCLOCK_WHICH(which_clock) == CPUCLOCK_SCHED) {
+ 			/*
+ 			 * If sched_clock is using a cycle counter, we
+ 			 * don't have any idea of its true resolution
+ 			 * exported, but it is much more than 1s/HZ.
+ 			 */
++			/* ¾«¶ÈÊÇÄÉÃë */
+ 			tp->tv_nsec = 1;
+ 		}
+ 	}
+@@ -184,12 +195,15 @@ static int cpu_clock_sample(const clockid_t which_clock, struct task_struct *p,
+ 	default:
+ 		return -EINVAL;
+ 	case CPUCLOCK_PROF:
++		/* ÓÃ»§Ì¬ºÍÄÚºËÌ¬µÄÊ±¼ä */
+ 		*sample = prof_ticks(p);
+ 		break;
+ 	case CPUCLOCK_VIRT:
++		/* ÓÃ»§Ì¬µÄÊ±¼ä */
+ 		*sample = virt_ticks(p);
+ 		break;
+ 	case CPUCLOCK_SCHED:
++		/* SchedÊ±¼ä */
+ 		*sample = task_sched_runtime(p);
+ 		break;
+ 	}
+@@ -291,31 +305,42 @@ static int posix_cpu_clock_get_task(struct task_struct *tsk,
+ 	int err = -EINVAL;
+ 	unsigned long long rtn;
+ 
+-	if (CPUCLOCK_PERTHREAD(which_clock)) {
++	if (CPUCLOCK_PERTHREAD(which_clock)) {/* Ïß³ÌµÄÊ±¼ä */
++		/**
++		 * ±ØĞëºÍµ÷ÓÃÕßÊÇÍ¬Ò»¸öÏß³Ì×é
++		 */
+ 		if (same_thread_group(tsk, current))
++			/**
++			 * »ñµÃÏß³ÌµÄÊ±¼ä
++			 */
+ 			err = cpu_clock_sample(which_clock, tsk, &rtn);
+-	} else {
++	} else {/* ½ø³ÌµÄÊ±¼ä */
+ 		if (tsk == current || thread_group_leader(tsk))
++			/* »ñÈ¡½ø³Ì×éµÄÊ±¼ä */
+ 			err = cpu_clock_sample_group(which_clock, tsk, &rtn);
+ 	}
+ 
+-	if (!err)
++	if (!err)/* ½«½á¹û¸³Öµ */
+ 		sample_to_timespec(which_clock, rtn, tp);
+ 
+ 	return err;
+ }
+ 
+ 
++/**
++ * »ñµÃposix cpuÊ±ÖÓ
++ */
+ static int posix_cpu_clock_get(const clockid_t which_clock, struct timespec *tp)
+ {
+ 	const pid_t pid = CPUCLOCK_PID(which_clock);
+ 	int err = -EINVAL;
+ 
+-	if (pid == 0) {
++	if (pid == 0) {/* »ñÈ¡µ±Ç°Ïß³ÌµÄÊ±¼ä */
+ 		/*
+ 		 * Special case constant value for our own clocks.
+ 		 * We don't have to do any lookup to find ourselves.
+ 		 */
++		/* »ñÈ¡Ïß³ÌµÄCPUÊ±¼ä */
+ 		err = posix_cpu_clock_get_task(current, which_clock, tp);
+ 	} else {
+ 		/*
+@@ -324,8 +349,10 @@ static int posix_cpu_clock_get(const clockid_t which_clock, struct timespec *tp)
+ 		 */
+ 		struct task_struct *p;
+ 		rcu_read_lock();
++		/* ¸ù¾İpid²éÕÒÏß³ÌÃèÊö·û */
+ 		p = find_task_by_vpid(pid);
+ 		if (p)
++			/* »ñÈ¡Ïß³ÌµÄCPUÊ±¼ä */
+ 			err = posix_cpu_clock_get_task(p, which_clock, tp);
+ 		rcu_read_unlock();
+ 	}
+diff --git a/kernel/time/posix-timers.c b/kernel/time/posix-timers.c
+old mode 100644
+new mode 100755
+index 31d11ac..f8835b8
+--- a/kernel/time/posix-timers.c
++++ b/kernel/time/posix-timers.c
+@@ -65,7 +65,14 @@
+  */
+ static struct kmem_cache *posix_timers_cache;
+ 
++/**
++ * È«¾ÖposixÊ±ÖÓ¹şÏ£±í
++ * 512¸öÈë¿Ú
++ */
+ static DEFINE_HASHTABLE(posix_timers_hashtable, 9);
++/**
++ * ±£»¤È«¾ÖposixÊ±ÖÓµÄËø
++ */
+ static DEFINE_SPINLOCK(hash_lock);
+ 
+ /*
+@@ -124,6 +131,9 @@ static DEFINE_SPINLOCK(hash_lock);
+  *	    which we beg off on and pass to do_sys_settimeofday().
+  */
+ 
++/**
++ * ¾²Ì¬¶¨ÒåµÄPosixÊ±ÖÓ
++ */
+ static struct k_clock posix_clocks[MAX_CLOCKS];
+ 
+ /*
+@@ -176,19 +186,25 @@ static struct k_itimer *posix_timer_by_id(timer_t id)
+ static int posix_timer_add(struct k_itimer *timer)
+ {
+ 	struct signal_struct *sig = current->signal;
++	/**
++	 * posix_timer_idÖĞ¼ÇÂ¼ÁËÉÏÒ»´Î·ÖÅäµÄID+1
++	 * ÎÊÎÊÕâÀï¿ªÊ¼·ÖÅä£¬³É¹¦ÂÊ½Ï¸ß
++	 */
+ 	int first_free_id = sig->posix_timer_id;
+ 	struct hlist_head *head;
+ 	int ret = -ENOENT;
+ 
+-	do {
++	do {/* Ñ­»·£¬Ö±µ½ÕÒµ½¿ÉÓÃID */
+ 		spin_lock(&hash_lock);
+ 		head = &posix_timers_hashtable[hash(sig, sig->posix_timer_id)];
+-		if (!__posix_timers_find(head, sig, sig->posix_timer_id)) {
++		if (!__posix_timers_find(head, sig, sig->posix_timer_id)) {/* ¿ÉÓÃID */
+ 			hlist_add_head_rcu(&timer->t_hash, head);
+ 			ret = sig->posix_timer_id;
+ 		}
+-		if (++sig->posix_timer_id < 0)
++		/* ²»¹Ü3721£¬¶¼ÒªÔö¼Ófree id */
++		if (++sig->posix_timer_id < 0)/* »ØÈÆID */
+ 			sig->posix_timer_id = 0;
++		/* ÕÒÁËÒ»È¦¶¼»¹Ã»ÓĞÕÒµ½£¬ÓĞµã¿Óµù */
+ 		if ((sig->posix_timer_id == first_free_id) && (ret == -ENOENT))
+ 			/* Loop over all possible ids completed */
+ 			ret = -EAGAIN;
+@@ -284,6 +300,7 @@ static int posix_get_hrtimer_res(clockid_t which_clock, struct timespec *tp)
+  */
+ static __init int init_posix_timers(void)
+ {
++	/* real timeÊ±ÖÓ */
+ 	struct k_clock clock_realtime = {
+ 		.clock_getres	= posix_get_hrtimer_res,
+ 		.clock_get	= posix_clock_realtime_get,
+@@ -296,6 +313,7 @@ static __init int init_posix_timers(void)
+ 		.timer_get	= common_timer_get,
+ 		.timer_del	= common_timer_del,
+ 	};
++	/* monotonic Ê±ÖÓ£¬Ã»ÓĞset½Ó¿Ú */
+ 	struct k_clock clock_monotonic = {
+ 		.clock_getres	= posix_get_hrtimer_res,
+ 		.clock_get	= posix_ktime_get_ts,
+@@ -359,16 +377,29 @@ static void schedule_next_timer(struct k_itimer *timr)
+ {
+ 	struct hrtimer *timer = &timr->it.real.timer;
+ 
+-	if (timr->it.real.interval.tv64 == 0)
++	if (timr->it.real.interval.tv64 == 0)/* one shotÀàĞÍµÄ£¬Ö±½ÓÍË³ö */
+ 		return;
+ 
++	/**
++	 * Éè¶¨ÏÂ´Î³¬ÆÚÊ±¼ä²¢¼ÆËãoverrun´ÎÊı
++	 */
+ 	timr->it_overrun += (unsigned int) hrtimer_forward(timer,
+ 						timer->base->get_time(),
+ 						timr->it.real.interval);
+ 
++	/**
++	 * ±£´æ¸ÃtimerµÄoverrun´ÎÊı
++	 * ĞÅºÅ´¦Àíº¯Êı»ñÈ¡¸ÃÖµ£¬À´»ñÖª±»overrunµÄ´ÎÊı
++	 */
+ 	timr->it_overrun_last = timr->it_overrun;
++	/* ÎªÏÂ´Î³õÊ¼»¯overrun */
+ 	timr->it_overrun = -1;
++	/**
++	 * Çå³ıpending±ê¼Ç²¢Ôö¼ÓĞÅºÅË½ÓĞÊı¾İÓò
++	 * Ë½ÓĞÊı¾İÓòÊÇĞÅºÅ±»·¢ËÍµÄ´ÎÊı£¬½«Æä¼Ó1
++	 */
+ 	++timr->it_requeue_pending;
++	/* ÖØÆô¸´Î»¶¨Ê±Æ÷ */
+ 	hrtimer_restart(timer);
+ }
+ 
+@@ -383,6 +414,9 @@ static void schedule_next_timer(struct k_itimer *timr)
+  * To protect against the timer going away while the interrupt is queued,
+  * we require that the it_requeue_pending flag be set.
+  */
++/**
++ * Posix¶¨Ê±Æ÷ĞÅºÅ±»Õª³ıºó£¬ÓÉ´Ëº¯ÊıÖØÆô¶¨Ê±Æ÷
++ */
+ void do_schedule_next_timer(struct siginfo *info)
+ {
+ 	struct k_itimer *timr;
+@@ -391,9 +425,9 @@ void do_schedule_next_timer(struct siginfo *info)
+ 	timr = lock_timer(info->si_tid, &flags);
+ 
+ 	if (timr && timr->it_requeue_pending == info->si_sys_private) {
+-		if (timr->it_clock < 0)
++		if (timr->it_clock < 0)/* ¶¯Ì¬Posix¶¨Ê±Æ÷ */
+ 			posix_cpu_timer_schedule(timr);
+-		else
++		else/* ÆÕÍ¨Posix¶¨Ê±Æ÷ */
+ 			schedule_next_timer(timr);
+ 
+ 		info->si_overrun += timr->it_overrun_last;
+@@ -439,26 +473,42 @@ EXPORT_SYMBOL_GPL(posix_timer_event);
+ 
+  * This code is for CLOCK_REALTIME* and CLOCK_MONOTONIC* timers.
+  */
++/**
++ * ÆÕÍ¨posixÊ±ÖÓµ½ÆÚ´¦Àí»Øµ÷º¯Êı
++ */
+ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
+ {
+ 	struct k_itimer *timr;
+ 	unsigned long flags;
+ 	int si_private = 0;
++	/**
++	 * ¶ÔÓÚone shotÀàĞÍµÄ£¬ĞèÒª·µ»ØHRTIMER_NORESTART
++	 */
+ 	enum hrtimer_restart ret = HRTIMER_NORESTART;
+ 
++	/* »ñÈ¡¸Ã¸ß¾«¶Ètimer¶ÔÓ¦µÄÄÇ¸ök_itimerÊı¾İ */
+ 	timr = container_of(timer, struct k_itimer, it.real.timer);
+ 	spin_lock_irqsave(&timr->it_lock, flags);
+ 
+-	if (timr->it.real.interval.tv64 != 0)
++	if (timr->it.real.interval.tv64 != 0)/* ÖÜÆÚĞÔtimer */
++		/**
++		 * ÓĞ¿ÉÄÜ»áÓĞoverrunµÄÎÊÌâ
++		 * ÕâÊ±ºò£¬ĞèÒª´«µİÒ»¸ösignalµÄË½ÓĞÊı¾İ£¬ÒÔ±ãÔÚqueue signalµÄÊ±ºò½øĞĞ±êÊ¶¡
++		 * ++timr->it_requeue_pendingÓÃÀ´±ê¼Ç¸Ãtimer´¦ÓÚpending×´Ì¬
++		 * ¼ÓÒ»¾ÍÊÇ½«LSBÉè¶¨Îª1
++		 */
+ 		si_private = ++timr->it_requeue_pending;
+ 
++	/**
++	 * ½«ĞÅºÅ¹ÒÈë½ø³Ì£¨Ïß³Ì£©signal pending¶ÓÁĞ
++	 */
+ 	if (posix_timer_event(timr, si_private)) {
+ 		/*
+ 		 * signal was not sent because of sig_ignor
+ 		 * we will not get a call back to restart it AND
+ 		 * it should be restarted.
+ 		 */
+-		if (timr->it.real.interval.tv64 != 0) {
++		if (timr->it.real.interval.tv64 != 0) {/* ÖÜÆÚĞÔ¶¨Ê±Æ÷ */
+ 			ktime_t now = hrtimer_cb_get_time(timer);
+ 
+ 			/*
+@@ -491,9 +541,11 @@ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
+ 					now = ktime_add(now, kj);
+ 			}
+ #endif
++			/* Ôö¼Óoverrun */
+ 			timr->it_overrun += (unsigned int)
+ 				hrtimer_forward(timer, now,
+ 						timr->it.real.interval);
++			/* ÖØĞÂÆô¶¯Ê±ÖÓ£¬ÒÔ´¦ÀíÏÂÒ»´Îoverrun */
+ 			ret = HRTIMER_RESTART;
+ 			++timr->it_requeue_pending;
+ 		}
+@@ -507,14 +559,14 @@ static struct pid *good_sigevent(sigevent_t * event)
+ {
+ 	struct task_struct *rtn = current->group_leader;
+ 
+-	if ((event->sigev_notify & SIGEV_THREAD_ID ) &&
+-		(!(rtn = find_task_by_vpid(event->sigev_notify_thread_id)) ||
+-		 !same_thread_group(rtn, current) ||
+-		 (event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_SIGNAL))
++	if ((event->sigev_notify & SIGEV_THREAD_ID ) &&/* Ö¸¶¨ÓÉÏß³ÌÀ´´¦ÀíĞÅºÅ */
++		(!(rtn = find_task_by_vpid(event->sigev_notify_thread_id)) ||/* Ïß³ÌÈ·ÊµÒª´æÔÚ */
++		 !same_thread_group(rtn, current) ||/* Í¬Ò»½ø³Ì×é */
++		 (event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_SIGNAL))/* ²ÎÊı²»³åÍ» */
+ 		return NULL;
+ 
+-	if (((event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE) &&
+-	    ((event->sigev_signo <= 0) || (event->sigev_signo > SIGRTMAX)))
++	if (((event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE) &&/* ÓÉĞÅºÅÀ´´¦Àí */
++	    ((event->sigev_signo <= 0) || (event->sigev_signo > SIGRTMAX)))/* ĞÅºÅ±àºÅÒªÕıÈ· */
+ 		return NULL;
+ 
+ 	return task_pid(rtn);
+@@ -580,17 +632,28 @@ static void release_posix_timer(struct k_itimer *tmr, int it_id_set)
+ 	call_rcu(&tmr->it.rcu, k_itimer_rcu_free);
+ }
+ 
++/**
++ * ×ª»»Ê±ÖÓID
++ */
+ static struct k_clock *clockid_to_kclock(const clockid_t id)
+ {
+-	if (id < 0)
++	if (id < 0)/* ²»ÊÇ¾²Ì¬ID */
+ 		return (id & CLOCKFD_MASK) == CLOCKFD ?
+ 			&clock_posix_dynamic : &clock_posix_cpu;
+ 
++	/**
++	 * ¾²Ì¬ID
++	 * Èç¹ûÏàÓ¦µÄ¾²Ì¬IDÃ»ÓĞÊµÏÖ£¬¾Í·µ»ØNULL
++	 */
+ 	if (id >= MAX_CLOCKS || !posix_clocks[id].clock_getres)
+ 		return NULL;
++	/* ¾²Ì¬ID */
+ 	return &posix_clocks[id];
+ }
+ 
++/**
++ * ·Ç¶¯Ì¬Ê±ÖÓµÄ´´½¨
++ */
+ static int common_timer_create(struct k_itimer *new_timer)
+ {
+ 	hrtimer_init(&new_timer->it.real.timer, new_timer->it_clock, 0);
+@@ -599,54 +662,81 @@ static int common_timer_create(struct k_itimer *new_timer)
+ 
+ /* Create a POSIX.1b interval timer. */
+ 
++/**
++ * ´´½¨posix¶¨Ê±Æ÷
++ * Ä¿Ç°ºÃÊ¹µÄ½Ó¿Ú£¬Ó¦¸Ã¶àÓÃ
++ */
+ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
+ 		struct sigevent __user *, timer_event_spec,
+ 		timer_t __user *, created_timer_id)
+ {
++	/**
++	 * ¸ù¾İclock ID»ñÈ¡ÄÚºËÖĞµÄstruct k_clock
++	 */
+ 	struct k_clock *kc = clockid_to_kclock(which_clock);
+ 	struct k_itimer *new_timer;
+ 	int error, new_timer_id;
+ 	sigevent_t event;
+ 	int it_id_set = IT_ID_NOT_SET;
+ 
++	/* Å¶»í£¬·Ç·¨id */
+ 	if (!kc)
+ 		return -EINVAL;
++	/* ÕâÖÖÀàĞÍµÄÊ±ÖÓ£¬²»ÔÊĞí´´½¨£¬ËãÇò */
+ 	if (!kc->timer_create)
+ 		return -EOPNOTSUPP;
+ 
++	/**
++	 * ·ÖÅäÒ»¸öPOSIX timer
++	 * ËùÓĞ³ÉÔ±±»³õÊ¼»¯Îª0
++	 */
+ 	new_timer = alloc_posix_timer();
+ 	if (unlikely(!new_timer))
+ 		return -EAGAIN;
+ 
+ 	spin_lock_init(&new_timer->it_lock);
++	/**
++	 * ÏÈ·ÖÅäÒ»¸öID
++	 * ÔÙ½«¸Ãtimer¼ÓÈëµ½È«¾ÖµÄ¹şÏ£±íÖĞ¡£
++	 */
+ 	new_timer_id = posix_timer_add(new_timer);
+-	if (new_timer_id < 0) {
++	if (new_timer_id < 0) {/* ·ÖÅäÊ§°Ü£¬±³Ê±µÄ¶«Î÷ */
+ 		error = new_timer_id;
+ 		goto out;
+ 	}
+ 
+ 	it_id_set = IT_ID_SET;
++	/**
++	 * ³õÊ¼»¯¸Ãposix timer£¬Éè¶¨timer ID£¬clock IDÒÔ¼°overrunµÄÖµ¡£
++	 */
+ 	new_timer->it_id = (timer_t) new_timer_id;
+ 	new_timer->it_clock = which_clock;
+ 	new_timer->it_overrun = -1;
+ 
+-	if (timer_event_spec) {
++	if (timer_event_spec) {/* ÓÃ»§Ö¸¶¨ÁË´¦Àí·½Ê½ */
++		/* ¸´ÖÆÓÃ»§Ì¬²ÎÊı */
+ 		if (copy_from_user(&event, timer_event_spec, sizeof (event))) {
+ 			error = -EFAULT;
+ 			goto out;
+ 		}
+ 		rcu_read_lock();
++		/* È·¶¨´¦Àí¶¨Ê±Æ÷µÄÈÎÎñID */
+ 		new_timer->it_pid = get_pid(good_sigevent(&event));
+ 		rcu_read_unlock();
+-		if (!new_timer->it_pid) {
++		if (!new_timer->it_pid) {/* Èç¹ûidÎª¿Õ£¬ËµÃ÷²ÎÊı¼ì²éÃ»ÓĞÍ¨¹ı */
+ 			error = -EINVAL;
+ 			goto out;
+ 		}
+-	} else {
++	} else {/* Ã»ÓĞÖ¸¶¨²ÎÊı£¬ÉèÖÃÄ¬ÈÏÖµ */
+ 		memset(&event.sigev_value, 0, sizeof(event.sigev_value));
++		/**
++		 * Èç¹ûÓÃ»§¿Õ¼äµÄ³ÌĞòÃ»ÓĞÖ¸¶¨sigevent_tµÄ²ÎÊı
++		 * ÄÇÃ´ÄÚºËµÄÈ±Ê¡ĞĞÎªÊÇ·¢ËÍSIGALRM¸øµ÷ÓÃÏß³ÌËùÊôµÄÏß³Ì×éleader¡£
++		 */
+ 		event.sigev_notify = SIGEV_SIGNAL;
+ 		event.sigev_signo = SIGALRM;
+ 		event.sigev_value.sival_int = new_timer->it_id;
++		/* Ä¬ÈÏÓÉÁìÍ·½ø³ÌÀ´´¦ÀíĞÅºÅ */
+ 		new_timer->it_pid = get_pid(task_tgid(current));
+ 	}
+ 
+@@ -654,19 +744,28 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
+ 	new_timer->sigq->info.si_signo = event.sigev_signo;
+ 	new_timer->sigq->info.si_value = event.sigev_value;
+ 	new_timer->sigq->info.si_tid   = new_timer->it_id;
++	/**
++	 * SI_TIMERÓÃÀ´±êÊ¶¸ÃĞÅºÅÊÇÓÉÓÚposix timer¶ø²úÉúµÄ¡£
++	 */
+ 	new_timer->sigq->info.si_code  = SI_TIMER;
+ 
++	/* ½«·ÖÅäµÄtimer ID ¿½±´»ØÓÃ»§¿Õ¼ä */
+ 	if (copy_to_user(created_timer_id,
+ 			 &new_timer_id, sizeof (new_timer_id))) {
+ 		error = -EFAULT;
+ 		goto out;
+ 	}
+ 
++	/**
++	 * Ò²¾ÍÊÇ¸ö¶ş´«ÊÖ
++	 * ½«´´½¨ÈÎÎñ½»¸ø¾ßÌåµÄÊ±ÖÓ
++	 */
+ 	error = kc->timer_create(new_timer);
+ 	if (error)
+ 		goto out;
+ 
+ 	spin_lock_irq(&current->sighand->siglock);
++	/* ½¨Á¢posix timerºÍµ±Ç°½ø³Ìsignal descriptorµÄ¹ØÏµ */
+ 	new_timer->it_signal = current->signal;
+ 	list_add(&new_timer->list, &current->signal->posix_timers);
+ 	spin_unlock_irq(&current->sighand->siglock);
+@@ -732,6 +831,9 @@ static struct k_itimer *__lock_timer(timer_t timer_id, unsigned long *flags)
+  * it is the same as a requeue pending timer WRT to what we should
+  * report.
+  */
++/**
++ * »ñµÃposix¶¨Ê±Æ÷µÄÉèÖÃ
++ */
+ static void
+ common_timer_get(struct k_itimer *timr, struct itimerspec *cur_setting)
+ {
+@@ -740,15 +842,20 @@ common_timer_get(struct k_itimer *timr, struct itimerspec *cur_setting)
+ 
+ 	memset(cur_setting, 0, sizeof(struct itimerspec));
+ 
++	/**
++	 * »ñÈ¡¸Ãposix timer¶ÔÓ¦µÄtimer periodÖµ
++	 */
+ 	iv = timr->it.real.interval;
+ 
+ 	/* interval timer ? */
+-	if (iv.tv64)
++	if (iv.tv64)/* ÖÜÆÚĞÔ¶¨Ê±Æ÷ */
++		/* interval timerĞè·µ»Øtimer period */
+ 		cur_setting->it_interval = ktime_to_timespec(iv);
+ 	else if (!hrtimer_active(timer) &&
+-		 (timr->it_sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE)
+-		return;
++		 (timr->it_sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE)/* one shot */
++		return;/* ·µ»Ø0¾ÍĞĞÁË */
+ 
++	/* ÏÈÈ¡µÃµ±Ç°Ê±¼äµãµÄÖµ */
+ 	now = timer->base->get_time();
+ 
+ 	/*
+@@ -756,13 +863,15 @@ common_timer_get(struct k_itimer *timr, struct itimerspec *cur_setting)
+ 	 * timer move the expiry time forward by intervals, so
+ 	 * expiry is > now.
+ 	 */
+-	if (iv.tv64 && (timr->it_requeue_pending & REQUEUE_PENDING ||
+-	    (timr->it_sigev_notify & ~SIGEV_THREAD_ID) == SIGEV_NONE))
++	if (iv.tv64 && (timr->it_requeue_pending & REQUEUE_PENDING ||/* ÖÜÆÚĞÔ¶¨Ê±Æ÷£¬²¢ÇÒĞÅºÅ±»¹ÒÆğ */
++	    (timr->it_sigev_notify & ~SIGEV_THREAD_ID) == SIGEV_NONE))/* ÂÖÑ¯·½Ê½µÄ¶¨Ê±Æ÷ */
++	    	/*  Èç¹û³¬Ê±£¬¾ÍÖØÖÃ¶¨Ê±Æ÷²¢Ôö¼Óit_overrun */
+ 		timr->it_overrun += (unsigned int) hrtimer_forward(timer, now, iv);
+ 
++	/* ¼ÆËãÊ£ÓàÊ±¼ä */
+ 	remaining = ktime_sub(hrtimer_get_expires(timer), now);
+ 	/* Return 0 only, when the timer is expired and not pending */
+-	if (remaining.tv64 <= 0) {
++	if (remaining.tv64 <= 0) {/* ÒÑ¾­³¬ÆÚ */
+ 		/*
+ 		 * A single shot SIGEV_NONE timer must return 0, when
+ 		 * it is expired !
+@@ -770,10 +879,14 @@ common_timer_get(struct k_itimer *timr, struct itimerspec *cur_setting)
+ 		if ((timr->it_sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE)
+ 			cur_setting->it_value.tv_nsec = 1;
+ 	} else
++		/* ·µ»ØÊ£ÓàÊ±¼äĞÅÏ¢ */
+ 		cur_setting->it_value = ktime_to_timespec(remaining);
+ }
+ 
+ /* Get the time remaining on a POSIX.1b interval timer. */
++/**
++ * »ñÈ¡Ò»¸öposix timerÊ£ÓàÊ±¼ä
++ */
+ SYSCALL_DEFINE2(timer_gettime, timer_t, timer_id,
+ 		struct itimerspec __user *, setting)
+ {
+@@ -783,18 +896,26 @@ SYSCALL_DEFINE2(timer_gettime, timer_t, timer_id,
+ 	unsigned long flags;
+ 	int ret = 0;
+ 
++	/**
++	 * ¸ù¾İtimer IDÕÒµ½¶ÔÓ¦µÄposix timer
++	 */
+ 	timr = lock_timer(timer_id, &flags);
+ 	if (!timr)
+ 		return -EINVAL;
+ 
++	/**
++	 * ¸ù¾İclock ID»ñÈ¡ÄÚºËÖĞµÄstruct k_clock
++	 */
+ 	kc = clockid_to_kclock(timr->it_clock);
+ 	if (WARN_ON_ONCE(!kc || !kc->timer_get))
+ 		ret = -EINVAL;
+ 	else
++		/* µ÷ÓÃ¾ßÌåclockµÄget timerº¯Êı */
+ 		kc->timer_get(timr, &cur_setting);
+ 
+ 	unlock_timer(timr, flags);
+ 
++	/* ½«½á¹ûcopyµ½ÓÃ»§¿Õ¼ä */
+ 	if (!ret && copy_to_user(setting, &cur_setting, sizeof (cur_setting)))
+ 		return -EFAULT;
+ 
+@@ -832,10 +953,13 @@ static int
+ common_timer_set(struct k_itimer *timr, int flags,
+ 		 struct itimerspec *new_setting, struct itimerspec *old_setting)
+ {
++	/**
++	 * »ñÈ¡¸Ãposix timer¶ÔÓ¦µÄ¸ß¾«¶Ètimer
++	 */
+ 	struct hrtimer *timer = &timr->it.real.timer;
+ 	enum hrtimer_mode mode;
+ 
+-	if (old_setting)
++	if (old_setting)/* »ñÈ¡¾ÉµÄtimerÉè¶¨ */
+ 		common_timer_get(timr, old_setting);
+ 
+ 	/* disable the timer */
+@@ -844,17 +968,31 @@ common_timer_set(struct k_itimer *timr, int flags,
+ 	 * careful here.  If smp we could be in the "fire" routine which will
+ 	 * be spinning as we hold the lock.  But this is ONLY an SMP issue.
+ 	 */
++	/**
++	 * Í£µô¸Ã¸ß¾«¶Ètimer
++	 */
+ 	if (hrtimer_try_to_cancel(timer) < 0)
+-		return TIMER_RETRY;
++		return TIMER_RETRY;/* ¾¹È»Í£Ö¹²»µô? */
+ 
++	/**
++	 * it_requeue_pending×´Ì¬flagÖĞµÄĞÅºÅË½ÓĞÊı¾İ¼ÓÒ»
++	 * Õâ¸öË½ÓĞÊı¾İÊÇ[31:1]£¬Òò´Ë´úÂëÖĞ¼Ó2
++	 * ²¢ÇÒÇå³ıpending flag
++	 */
+ 	timr->it_requeue_pending = (timr->it_requeue_pending + 2) & 
+ 		~REQUEUE_PENDING;
++	/* ÉÏ´ÎµÄoverrun countÒª±»Çå³ı */
+ 	timr->it_overrun_last = 0;
+ 
+ 	/* switch off the timer when it_value is zero */
++	/**
++	 * ĞÂÉè¶¨µÄÊ±¼äÖµµÈÓÚ0 
++	 * ËµÃ÷½ö½öÊÇÏëÍ£Ö¹µô¸Ã¶¨Ê±Æ÷
++	 */
+ 	if (!new_setting->it_value.tv_sec && !new_setting->it_value.tv_nsec)
+ 		return 0;
+ 
++	/* ÖØĞÂ³õÊ¼»¯¸ß¾«¶È¶¨Ê±Æ÷ */
+ 	mode = flags & TIMER_ABSTIME ? HRTIMER_MODE_ABS : HRTIMER_MODE_REL;
+ 	hrtimer_init(&timr->it.real.timer, timr->it_clock, mode);
+ 	timr->it.real.timer.function = posix_timer_fn;
+@@ -862,22 +1000,36 @@ common_timer_set(struct k_itimer *timr, int flags,
+ 	hrtimer_set_expires(timer, timespec_to_ktime(new_setting->it_value));
+ 
+ 	/* Convert interval */
++	/**
++	 * ÉèÖÃintervalµÄÖµ
++	 * Í¨¹ı¸ÃÖµ¿ÉÒÔÉè¶¨ÖÜÆÚĞÔtimer
++	 * ÓÃ»§¿Õ¼ä´«ÈëµÄ²ÎÊıÊÇtimespec
++	 * Ğè×ª»»³ÉktimeµÄÊ±¼ä¸ñÊ½
++	 */
+ 	timr->it.real.interval = timespec_to_ktime(new_setting->it_interval);
+ 
+ 	/* SIGEV_NONE timers are not queued ! See common_timer_get */
++	/* ¶ÔÓÚÂÖÑ¯ÀàĞÍµÄposix timer£¬ÎÒÃÇ²¢²»»áÕæÕıÆô¶¯¸Ãtimer */
+ 	if (((timr->it_sigev_notify & ~SIGEV_THREAD_ID) == SIGEV_NONE)) {
+ 		/* Setup correct expiry time for relative timers */
+-		if (mode == HRTIMER_MODE_REL) {
++		if (mode == HRTIMER_MODE_REL) {/* ·Ç¾ø¶ÔÊ±¼ä */
++			/* ÔÚµ±Ç°Ê±¼äÉÏÃæ¼ÓÉÏÏà¶ÔÊ±¼ä */
+ 			hrtimer_add_expires(timer, timer->base->get_time());
+ 		}
+ 		return 0;
+ 	}
+ 
++	/* Æô¶¯¸ß¾«¶Ètimer */
+ 	hrtimer_start_expires(timer, mode);
+ 	return 0;
+ }
+ 
+ /* Set a POSIX.1b interval timer */
++/**
++ * ÉèÖÃposixÊ±ÖÓµÄÖµ
++ *	flag:	Ïà¶ÔÊ±¼ä»¹ÊÇ¾ø¶ÔÊ±¼ä
++ *	new_setting:	Èç¹ûÖµÎª0£¬ÔòÍ£Ö¹Ê±ÖÓ
++ */
+ SYSCALL_DEFINE4(timer_settime, timer_t, timer_id, int, flags,
+ 		const struct itimerspec __user *, new_setting,
+ 		struct itimerspec __user *, old_setting)
+@@ -941,6 +1093,9 @@ static inline int timer_delete_hook(struct k_itimer *timer)
+ }
+ 
+ /* Delete a POSIX.1b interval timer. */
++/**
++ * É¾³ıposix¶¨Ê±Æ÷
++ */
+ SYSCALL_DEFINE1(timer_delete, timer_t, timer_id)
+ {
+ 	struct k_itimer *timer;
+@@ -1065,6 +1220,9 @@ SYSCALL_DEFINE2(clock_adjtime, const clockid_t, which_clock,
+ 	return err;
+ }
+ 
++/**
++ * »ñÈ¡Ê±ÖÓ¾«¶È
++ */
+ SYSCALL_DEFINE2(clock_getres, const clockid_t, which_clock,
+ 		struct timespec __user *, tp)
+ {
+diff --git a/kernel/time/tick-common.c b/kernel/time/tick-common.c
+old mode 100644
+new mode 100755
+index 4fcd99e..3e815bd
+--- a/kernel/time/tick-common.c
++++ b/kernel/time/tick-common.c
+@@ -78,18 +78,25 @@ int tick_is_oneshot_available(void)
+  */
+ static void tick_periodic(int cpu)
+ {
++	/* È«¾ÖÊ±ÖÓ */
+ 	if (tick_do_timer_cpu == cpu) {
+ 		write_seqlock(&jiffies_lock);
+ 
+ 		/* Keep track of the next tick event */
+ 		tick_next_period = ktime_add(tick_next_period, tick_period);
+ 
++		/* ĞŞ¸Äjiffies£¬¼ÆËãÏµÍ³¸ººÉ¡£ */
+ 		do_timer(1);
+ 		write_sequnlock(&jiffies_lock);
++		/* ¸üĞÂÏµÍ³Ê±¼ä */
+ 		update_wall_time();
+ 	}
+ 
++	/**
++	 * ¸üĞÂµ±Ç°ÏµÍ³ÔËĞĞÊ±¼ä
++	 */
+ 	update_process_times(user_mode(get_irq_regs()));
++	/* ´¦Àíprofile */
+ 	profile_tick(CPU_PROFILING);
+ }
+ 
+diff --git a/kernel/time/tick-sched.c b/kernel/time/tick-sched.c
+old mode 100644
+new mode 100755
+index 7c7ec45..3846a0e
+--- a/kernel/time/tick-sched.c
++++ b/kernel/time/tick-sched.c
+@@ -65,7 +65,7 @@ static void tick_do_update_jiffies64(ktime_t now)
+ 	write_seqlock(&jiffies_lock);
+ 
+ 	delta = ktime_sub(now, last_jiffies_update);
+-	if (delta.tv64 >= tick_period.tv64) {
++	if (delta.tv64 >= tick_period.tv64) {/* ¾àÀëÉÏ´ÎtickÒÑ¾­ÆğÀ´Ò»¸ötick */
+ 
+ 		delta = ktime_sub(delta, tick_period);
+ 		last_jiffies_update = ktime_add(last_jiffies_update,
+@@ -80,6 +80,9 @@ static void tick_do_update_jiffies64(ktime_t now)
+ 			last_jiffies_update = ktime_add_ns(last_jiffies_update,
+ 							   incr * ticks);
+ 		}
++		/**
++		 * À´ĞŞ¸Äjiffies£¬¼ÆËãÏµÍ³¸ººÉ
++		 */
+ 		do_timer(++ticks);
+ 
+ 		/* Keep the tick_next_period variable up to date */
+@@ -89,6 +92,7 @@ static void tick_do_update_jiffies64(ktime_t now)
+ 		return;
+ 	}
+ 	write_sequnlock(&jiffies_lock);
++	/* ¸üĞÂÏµÍ³Ê±¼ä */
+ 	update_wall_time();
+ }
+ 
+@@ -131,6 +135,9 @@ static void tick_sched_do_timer(ktime_t now)
+ 		tick_do_update_jiffies64(now);
+ }
+ 
++/**
++ * NO_HZÇé¿öÏÂ£¬´¦Àísched tick
++ */
+ static void tick_sched_handle(struct tick_sched *ts, struct pt_regs *regs)
+ {
+ #ifdef CONFIG_NO_HZ_COMMON
+@@ -148,7 +155,9 @@ static void tick_sched_handle(struct tick_sched *ts, struct pt_regs *regs)
+ 			ts->idle_jiffies++;
+ 	}
+ #endif
++	/* ¸üĞÂ½ø³ÌÊ±¼ä */
+ 	update_process_times(user_mode(regs));
++	/* ÄÚºËÆÊÎöÏà¹ØµÄ²Ù×÷ */
+ 	profile_tick(CPU_PROFILING);
+ }
+ 
+diff --git a/kernel/time/time.c b/kernel/time/time.c
+old mode 100644
+new mode 100755
+index 86751c6..de57153
+--- a/kernel/time/time.c
++++ b/kernel/time/time.c
+@@ -60,6 +60,12 @@ EXPORT_SYMBOL(sys_tz);
+  * why not move it into the appropriate arch directory (for those
+  * architectures that need it).
+  */
++/**
++ * timeÏµÍ³µ÷ÓÃ
++ * ·µ»Øµ±Ç°Ê±¼äµãµ½linux epochµÄÃëÊı
++ * Ò»°ãÓÃsys_gettimeofdayÀ´ÊµÏÖ
++ * ÕâÀïÎªÁË±£³Ö¼æÈİ¶øÒÑ
++ */
+ SYSCALL_DEFINE1(time, time_t __user *, tloc)
+ {
+ 	time_t i = get_seconds();
+@@ -78,7 +84,10 @@ SYSCALL_DEFINE1(time, time_t __user *, tloc)
+  * why not move it into the appropriate arch directory (for those
+  * architectures that need it).
+  */
+-
++/**
++ * stimeÏµÍ³µ÷ÓÃ
++ * Éè¶¨µ±Ç°Ê±¼äµãµ½linux epochµÄÃëÊı
++ */
+ SYSCALL_DEFINE1(stime, time_t __user *, tptr)
+ {
+ 	struct timespec tv;
+diff --git a/kernel/time/timekeeping.c b/kernel/time/timekeeping.c
+old mode 100644
+new mode 100755
+index 268fb09..3bf052d
+--- a/kernel/time/timekeeping.c
++++ b/kernel/time/timekeeping.c
+@@ -28,20 +28,39 @@
+ #include "ntp_internal.h"
+ #include "timekeeping_internal.h"
+ 
++/**
++ * Çå³ı¾ÉµÄNTPµÄ×´Ì¬Êı¾İ
++ */
+ #define TK_CLEAR_NTP		(1 << 0)
++/**
++ * ¸üĞÂshadow timekeeper£¬ÎªÁË±£³ÖºÍreal timekeeperÍ¬²½
++ */
+ #define TK_MIRROR		(1 << 1)
++/**
++ * ÓÃÓÚparavirtual clock
++ */
+ #define TK_CLOCK_WAS_SET	(1 << 2)
+ 
+ /*
+  * The most important data for readout fits into a single 64 byte
+  * cache line.
+  */
++/**
++ * timekeeper¶ÔÏó¼°ÆäË³ĞòËø
++ */
+ static struct {
+ 	seqcount_t		seq;
+ 	struct timekeeper	timekeeper;
+ } tk_core ____cacheline_aligned;
+ 
++/**
++ * ±£»¤timekeeperµÄ×ÔĞıËø
++ */
+ static DEFINE_RAW_SPINLOCK(timekeeper_lock);
++/**
++ * ÓÃÔÚ¸üĞÂÏµÍ³Ê±¼äµÄ¹ı³ÌÖĞ
++ * ¼õÉÙË³ĞòËøµÄ³ÖÓĞÊ±¼ä
++ */
+ static struct timekeeper shadow_timekeeper;
+ 
+ /**
+@@ -227,6 +246,9 @@ static inline cycle_t timekeeping_get_delta(struct tk_read_base *tkr)
+  *
+  * Unless you're the timekeeping code, you should not be using this!
+  */
++/**
++ * ÆôÓÃĞÂµÄclocksource
++ */
+ static void tk_setup_internals(struct timekeeper *tk, struct clocksource *clock)
+ {
+ 	cycle_t interval;
+@@ -234,9 +256,11 @@ static void tk_setup_internals(struct timekeeper *tk, struct clocksource *clock)
+ 	struct clocksource *old_clock;
+ 
+ 	old_clock = tk->tkr_mono.clock;
++	/* ¸ü»»ÎªĞÂµÄclocksource */
+ 	tk->tkr_mono.clock = clock;
+ 	tk->tkr_mono.read = clock->read;
+ 	tk->tkr_mono.mask = clock->mask;
++	/* ¸üĞÂlast cycleÖµ */
+ 	tk->tkr_mono.cycle_last = tk->tkr_mono.read(clock);
+ 
+ 	tk->tkr_raw.clock = clock;
+@@ -245,6 +269,9 @@ static void tk_setup_internals(struct timekeeper *tk, struct clocksource *clock)
+ 	tk->tkr_raw.cycle_last = tk->tkr_mono.cycle_last;
+ 
+ 	/* Do the ns -> cycle conversion first, using original mult */
++	/**
++	 * NTP¼ÆËãÓÃµÄÄÚ²¿±äÁ¿
++	 */
+ 	tmp = NTP_INTERVAL_LENGTH;
+ 	tmp <<= clock->shift;
+ 	ntpinterval = tmp;
+@@ -623,6 +650,9 @@ static void timekeeping_forward_now(struct timekeeper *tk)
+  * Updates the time of day in the timespec.
+  * Returns 0 on success, or -ve when suspended (timespec will be undefined).
+  */
++/**
++ * »ñµÃrealtimeµÄÊ±¼ä
++ */
+ int __getnstimeofday64(struct timespec64 *ts)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -637,6 +667,9 @@ int __getnstimeofday64(struct timespec64 *ts)
+ 
+ 	} while (read_seqcount_retry(&tk_core.seq, seq));
+ 
++	/**
++	 * ×¢ÒâÕâÀï£¬±ØĞëµ÷ÓÃtimespec64_add_ns
++	 */
+ 	ts->tv_nsec = 0;
+ 	timespec64_add_ns(ts, nsecs);
+ 
+@@ -662,6 +695,9 @@ void getnstimeofday64(struct timespec64 *ts)
+ }
+ EXPORT_SYMBOL(getnstimeofday64);
+ 
++/**
++ * »ñÈ¡monotonic clockµÄÊ±¼äÖµ
++ */
+ ktime_t ktime_get(void)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -672,12 +708,24 @@ ktime_t ktime_get(void)
+ 	WARN_ON(timekeeping_suspended);
+ 
+ 	do {
++		/**
++		 * ÄÚºËÖĞÉÙÓĞµÄ£¬ÓÃµ½Ë³ĞòËøµÄµØ·½
++		 */
+ 		seq = read_seqcount_begin(&tk_core.seq);
++		/**
++		 * »ñµÃCLOCK_MONOTONICµÄ»ù×¼
++		 */
+ 		base = tk->tkr_mono.base;
++		/**
++		 * »ñµÃCLOCK_MONOTONICµÄoffset
++		 */
+ 		nsecs = timekeeping_get_ns(&tk->tkr_mono);
+ 
+ 	} while (read_seqcount_retry(&tk_core.seq, seq));
+ 
++	/**
++	 * ·ÅÔÚÕâÀï¼ÆËã£¬¼õÉÙËøµÄÕùÓÃ
++	 */
+ 	return ktime_add_ns(base, nsecs);
+ }
+ EXPORT_SYMBOL_GPL(ktime_get);
+@@ -775,6 +823,10 @@ EXPORT_SYMBOL_GPL(ktime_get_raw);
+  * clock and the wall_to_monotonic offset and stores the result
+  * in normalized timespec64 format in the variable pointed to by @ts.
+  */
++/**
++ * »ñÈ¡monotonic clockµÄÊ±¼äÖµ
++ * ÀàËÆÓÚktime_get
++ */
+ void ktime_get_ts64(struct timespec64 *ts)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -890,6 +942,10 @@ EXPORT_SYMBOL(getnstime_raw_and_real);
+  *
+  * NOTE: Users should be converted to using getnstimeofday()
+  */
++/**
++ * »ñÈ¡´Ólinux epochµ½µ±Ç°Ê±¼äµãµÄÃëÊıÒÔ¼°ÄÉÃëÊı
++ * ÒÑ¾­·ÏÆúµÄ½Ó¿Ú£¬ÓÃclock_gettime
++ */
+ void do_gettimeofday(struct timeval *tv)
+ {
+ 	struct timespec64 now;
+@@ -906,6 +962,7 @@ EXPORT_SYMBOL(do_gettimeofday);
+  *
+  * Sets the time of day to the new time and update NTP and notify hrtimers
+  */
++
+ int do_settimeofday64(const struct timespec64 *ts)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -916,9 +973,13 @@ int do_settimeofday64(const struct timespec64 *ts)
+ 	if (!timespec64_valid_strict(ts))
+ 		return -EINVAL;
+ 
++	/* »ñÈ¡timerkeeper×ÔĞıËø */
+ 	raw_spin_lock_irqsave(&timekeeper_lock, flags);
+ 	write_seqcount_begin(&tk_core.seq);
+ 
++	/**
++	 * ¸üĞÂtimekeeperÖÁµ±Ç°Ê±¼ä
++	 */
+ 	timekeeping_forward_now(tk);
+ 
+ 	xt = tk_xtime(tk);
+@@ -930,10 +991,16 @@ int do_settimeofday64(const struct timespec64 *ts)
+ 		goto out;
+ 	}
+ 
++	/**
++	 * µ÷Õûwall time
++	 */
+ 	tk_set_wall_to_mono(tk, timespec64_sub(tk->wall_to_monotonic, ts_delta));
+ 
+ 	tk_set_xtime(tk, ts);
+ out:
++	/**
++	 * timekeepingÄ£¿é¸üĞÂÆäÄÚ²¿Êı¾İ
++	 */
+ 	timekeeping_update(tk, TK_CLEAR_NTP | TK_MIRROR | TK_CLOCK_WAS_SET);
+ 
+ 	write_seqcount_end(&tk_core.seq);
+@@ -1045,6 +1112,9 @@ void timekeeping_set_tai_offset(s32 tai_offset)
+  *
+  * Accumulates current time interval and initializes new clocksource
+  */
++/**
++ * ÇĞ»»clock source
++ */
+ static int change_clocksource(void *data)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -1056,17 +1126,22 @@ static int change_clocksource(void *data)
+ 	raw_spin_lock_irqsave(&timekeeper_lock, flags);
+ 	write_seqcount_begin(&tk_core.seq);
+ 
++	/**
++	 * ¾ÉµÄclocksourceË¢ĞÂÒ»ÏÂ×îĞÂÖµ
++	 */
+ 	timekeeping_forward_now(tk);
+ 	/*
+ 	 * If the cs is in module, get a module reference. Succeeds
+ 	 * for built-in code (owner == NULL) as well.
+ 	 */
+-	if (try_module_get(new->owner)) {
+-		if (!new->enable || new->enable(new) == 0) {
++	if (try_module_get(new->owner)) {/* Ä£¿é£¬±ğÅÜ£¬ÒıÓÃÒ»ÏÂ */
++		if (!new->enable || new->enable(new) == 0) {/* ³É¹¦ÆôÓÃclocksource */
+ 			old = tk->tkr_mono.clock;
++			/* Ö´ĞĞÕæÕıµÄÇĞ»»²Ù×÷ */
+ 			tk_setup_internals(tk, new);
+-			if (old->disable)
++			if (old->disable)/* °Ñ¾ÉµÄ¹Ø±Õµô */
+ 				old->disable(old);
++			/* ¾ÉÄ£¿é¿ÉÒÔĞİÏ¢ÁË */
+ 			module_put(old->owner);
+ 		} else {
+ 			module_put(new->owner);
+@@ -1087,13 +1162,18 @@ static int change_clocksource(void *data)
+  * This function is called from clocksource.c after a new, better clock
+  * source has been registered. The caller holds the clocksource_mutex.
+  */
++/**
++ * µ±ÓĞ¸üºÃµÄclocksource£¬µ÷ÓÃ´Ëº¯Êı¸üĞÂclock
++ */
+ int timekeeping_notify(struct clocksource *clock)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+ 
+ 	if (tk->tkr_mono.clock == clock)
+ 		return 0;
++	/* ·Å´óÕĞ£¬ÏÈÍ£Ö¹ËùÓĞCPU£¬ÔÙ½øĞĞÊ±ÖÓÔ´ÇĞ»» */
+ 	stop_machine(change_clocksource, clock, NULL);
++	/* Í¨ÖªtickÄ£¿é */
+ 	tick_clock_notify();
+ 	return tk->tkr_mono.clock == clock ? 0 : -1;
+ }
+@@ -1177,6 +1257,9 @@ void __weak read_persistent_clock(struct timespec *ts)
+ 	ts->tv_nsec = 0;
+ }
+ 
++/**
++ * ´ÓRTCÖĞ¶ÁÈ¡Ê±¼ä
++ */
+ void __weak read_persistent_clock64(struct timespec64 *ts64)
+ {
+ 	struct timespec ts;
+@@ -1220,14 +1303,23 @@ void __init timekeeping_init(void)
+ 	unsigned long flags;
+ 	struct timespec64 now, boot, tmp;
+ 
+-	//¶ÁÈëÊ±ÖÓÖµ£¬µ±Ç°Ö»ÓĞomap¼Ü¹¹ÊµÏÖÁË¡£
++	/**
++	 * ¶ÁÈëÊ±ÖÓÖµ£¬µ±Ç°Ö»ÓĞomap¼Ü¹¹ÊµÏÖÁË¡£
++	 * ´ÓÏµÍ³ÖĞµÄHW clock£¨ÀıÈçRTC£©ÖĞ»ñÈ¡Ê±¼äĞÅÏ¢¡£
++	 */
+ 	read_persistent_clock64(&now);
+-	if (!timespec64_valid_strict(&now)) {//Ã»ÓĞÊµÏÖ³Ö¾ÃµÄÊ±ÖÓ
++	/**
++	 * Ğ£ÑéÒ»¸ötimespecÊÇ·ñÊÇÓĞĞ§¡£
++	 */
++	if (!timespec64_valid_strict(&now)) {/* Ã»ÓĞÊµÏÖ³Ö¾ÃµÄÊ±ÖÓ */
+ 		pr_warn("WARNING: Persistent clock returned invalid value!\n"
+ 			"         Check your CMOS/BIOS settings.\n");
+ 		now.tv_sec = 0;
+ 		now.tv_nsec = 0;
+-	} else if (now.tv_sec || now.tv_nsec)//ÊµÏÖÁË£¬¼ÇÂ¼ÏÂÀ´
++	} else if (now.tv_sec || now.tv_nsec)/* ÊµÏÖÁË£¬¼ÇÂ¼ÏÂÀ´ */
++		/**
++		 * ËµÃ÷ÏµÍ³ÖĞ´æÔÚRTCµÄÓ²¼şÄ£¿é
++		 */
+ 		persistent_clock_exists = true;
+ 
+ 	//Í¬ÑùÖ»ÓĞomapÊµÏÖÁË¡£
+@@ -1245,17 +1337,39 @@ void __init timekeeping_init(void)
+ 	//ntp³õÊ¼»¯
+ 	ntp_init();
+ 
++	/**
++	 * ÏÈÕÒµ½Ä¬ÈÏµÄÊ±ÖÓÔ´
++	 * Ä¬ÈÏÊÇ»ùÓÚjiffiesÊµÏÖ
++	 * ÌåÏµ¼Ü¹¹¿ÉÒÔÉèÖÃ×Ô¼ºµÄÄ¬ÈÏÔ´
++	 */
+ 	clock = clocksource_default_clock();
+-	if (clock->enable)
++	if (clock->enable)/* ÆôÓÃÊ±ÖÓÔ´ */
+ 		clock->enable(clock);
++	/**
++	 * ½¨Á¢default clocksourceºÍtimekeeping»ï°é¹ØÏµ¡£
++	 */
+ 	tk_setup_internals(tk, clock);
+ 
++	/**
++	 * ¸ù¾İ´ÓRTCÖĞ»ñÈ¡µÄÊ±¼äÖµÀ´³õÊ¼»¯timekeepingÖĞµÄreal time clock
++	 */
+ 	tk_set_xtime(tk, &now);
++	/**
++	 * monotonic raw clock±»Éè¶¨Îª´Ó0¿ªÊ¼¡£
++	 */
+ 	tk->raw_time.tv_sec = 0;
+ 	tk->raw_time.tv_nsec = 0;
++	/**
++	 * Èç¹ûÃ»ÓĞ»ñÈ¡µ½ÓĞĞ§µÄbooting time£¬ÄÇÃ´¾ÍÑ¡Ôñµ±Ç°µÄreal time clock
++	 */
+ 	if (boot.tv_sec == 0 && boot.tv_nsec == 0)
+ 		boot = tk_xtime(tk);
+ 
++	/**
++	 * wall_to_monotonicÊÇreal time clockÓëmonotonic clockµÄ²îÖµ
++	 * ³õÊ¼»¯µÄÊ±¼äµãÉÏ£¬monotonic clockÊµ¼ÊÉÏµÈÓÚ0
++	 * real time clock+ wall_to_monotonicÊÇÏµÍ³µÄuptime£¬¶øreal time clock+ wall_to_monotonic + sleep timeÒ²¾ÍÊÇÏµÍ³µÄboot time¡£
++	 */
+ 	set_normalized_timespec64(&tmp, -boot.tv_sec, -boot.tv_nsec);
+ 	tk_set_wall_to_mono(tk, tmp);
+ 
+@@ -1284,8 +1398,16 @@ static void __timekeeping_inject_sleeptime(struct timekeeper *tk,
+ 				"sleep delta value!\n");
+ 		return;
+ 	}
++	/**
++	 * ½«suspendµÄÊ±¼ä¼Óµ½real time clockÉÏÈ¥
++	 */
+ 	tk_xtime_add(tk, delta);
++	/**
++	 * monotonic clock²»¼ÆsleepÊ±¼ä
++	 * Òò´Ëwall_to_monotonicÒª¼õÈ¥suspendµÄÊ±¼äÖµ
++	 */
+ 	tk_set_wall_to_mono(tk, timespec64_sub(tk->wall_to_monotonic, *delta));
++	/* µ÷ÕûsleepÊ±¼ä */
+ 	tk_update_sleep_time(tk, timespec64_to_ktime(*delta));
+ 	tk_debug_account_sleep_time(delta);
+ }
+@@ -1362,6 +1484,9 @@ void timekeeping_inject_sleeptime64(struct timespec64 *delta)
+ /**
+  * timekeeping_resume - Resumes the generic timekeeping subsystem.
+  */
++/**
++ * ÏµÍ³»Ö¸´Ê±µÄtimekeeping»Øµ÷
++ */
+ void timekeeping_resume(void)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -1371,9 +1496,18 @@ void timekeeping_resume(void)
+ 	cycle_t cycle_now, cycle_delta;
+ 
+ 	sleeptime_injected = false;
++	/**
++	 * Í¨¹ıpersistent clock¼ÇÂ¼ĞÑÀ´µÄÊ±¼äµã
++	 */
+ 	read_persistent_clock64(&ts_new);
+ 
++	/**
++	 * resumeÏµÍ³ÖĞËùÓĞµÄclockeventÉè±¸
++	 */
+ 	clockevents_resume();
++	/**
++	 * resumeÏµÍ³ÖĞËùÓĞµÄclocksourceÉè±¸
++	 */
+ 	clocksource_resume();
+ 
+ 	raw_spin_lock_irqsave(&timekeeper_lock, flags);
+@@ -1392,13 +1526,16 @@ void timekeeping_resume(void)
+ 	 * usable source. The rtc part is handled separately in rtc core code.
+ 	 */
+ 	cycle_now = tk->tkr_mono.read(clock);
+-	if ((clock->flags & CLOCK_SOURCE_SUSPEND_NONSTOP) &&
+-		cycle_now > tk->tkr_mono.cycle_last) {
++	if ((clock->flags & CLOCK_SOURCE_SUSPEND_NONSTOP) &&/* µ±Ç°µÄclocksourceÔÚsuspendµÄÊ±ºòÃ»ÓĞstop */
++		cycle_now > tk->tkr_mono.cycle_last) {/* clocksourceÃ»ÓĞÒç³ö */
+ 		u64 num, max = ULLONG_MAX;
+ 		u32 mult = clock->mult;
+ 		u32 shift = clock->shift;
+ 		s64 nsec = 0;
+ 
++		/**
++		 * ¼ÆËã±¾´ÎË¯ÃßµÄÊ±¼ä
++		 */
+ 		cycle_delta = clocksource_delta(cycle_now, tk->tkr_mono.cycle_last,
+ 						tk->tkr_mono.mask);
+ 
+@@ -1413,15 +1550,18 @@ void timekeeping_resume(void)
+ 			nsec = (((u64) max * mult) >> shift) * num;
+ 			cycle_delta -= num * max;
+ 		}
++		/* ½«Ë¯ÃßÊ±¼ä×ª»»ÎªÄÉÃë */
+ 		nsec += ((u64) cycle_delta * mult) >> shift;
+ 
+ 		ts_delta = ns_to_timespec64(nsec);
+ 		sleeptime_injected = true;
++	/* ·ñÔòÓÃRTCµÄÖµ */
+ 	} else if (timespec64_compare(&ts_new, &timekeeping_suspend_time) > 0) {
+ 		ts_delta = timespec64_sub(ts_new, timekeeping_suspend_time);
+ 		sleeptime_injected = true;
+ 	}
+ 
++	/* ½«Ë¯ÃßÊ±¿¼ÂÇ½øtimekeeping */
+ 	if (sleeptime_injected)
+ 		__timekeeping_inject_sleeptime(tk, &ts_delta);
+ 
+@@ -1441,6 +1581,9 @@ void timekeeping_resume(void)
+ 	hrtimers_resume();
+ }
+ 
++/**
++ * ÏµÍ³¹ÒÆğÊ±µÄtimekeeping»Øµ÷
++ */
+ int timekeeping_suspend(void)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -1448,6 +1591,11 @@ int timekeeping_suspend(void)
+ 	struct timespec64		delta, delta_delta;
+ 	static struct timespec64	old_delta;
+ 
++	/**
++	 * suspendÊ±¼äµãĞÅÏ¢¼ÇÂ¼µ½timekeeping_suspend_time±äÁ¿ÖĞ
++	 * ËäÈ»RTCµÄ¾«¶È²»¸ß£¬µ«ÊÇÔÚ¹ÒÆğºóÒ²ÄÜÔËĞĞ
++	 * ÁÄÊ¤ÓÚÎŞ
++	 */
+ 	read_persistent_clock64(&timekeeping_suspend_time);
+ 
+ 	/*
+@@ -1460,10 +1608,17 @@ int timekeeping_suspend(void)
+ 
+ 	raw_spin_lock_irqsave(&timekeeper_lock, flags);
+ 	write_seqcount_begin(&tk_core.seq);
++	/**
++	 * ÁÙË¯Ç°£¬×îºóÒ»´Î¸üĞÂtimekeeperµÄÏµÍ³Ê±ÖÓµÄÊı¾İ
++	 */
+ 	timekeeping_forward_now(tk);
++	/**
++	 * ±ê¼Çtimekeeping subsystem½øÈësuspend¹ı³Ì¡£
++	 * ÔÚÕâ¸ö¹ı³ÌÖĞµÄ»ñÈ¡Ê±¼ä²Ù×÷Ó¦¸Ã±»½ûÖ¹¡£
++	 */
+ 	timekeeping_suspended = 1;
+ 
+-	if (persistent_clock_exists) {
++	if (persistent_clock_exists) {/* ÓĞRTC */
+ 		/*
+ 		 * To avoid drift caused by repeated suspend/resumes,
+ 		 * which each can add ~1 second drift error,
+@@ -1472,6 +1627,11 @@ int timekeeping_suspend(void)
+ 		 */
+ 		delta = timespec64_sub(tk_xtime(tk), timekeeping_suspend_time);
+ 		delta_delta = timespec64_sub(delta, old_delta);
++		/**
++		 * Ò»´Îsuspend/resumeµÄ¹ı³ÌÖĞ£¬read persistent clock»áÒıÈë°ëÃëµÄÎó²î¡£
++		 * ÎªÁË·ÀÖ¹Á¬ĞøµÄsuspend/resumeÒıÆğÊ±¼äÆ«ÒÆ£¬ÕâÀïÒ²¿¼ÂÇÁËreal time clockºÍpersistent clockÖ®¼äµÄdeltaÖµ¡£
++		 * deltaÊÇ±¾´Îreal time clockºÍpersistent clockÖ®¼äµÄ²îÖµ£¬delta_deltaÊÇÁ½´ÎsuspendÖ®¼ädeltaµÄ²îÖµ
++		 */
+ 		if (abs(delta_delta.tv_sec) >= 2) {
+ 			/*
+ 			 * if delta_delta is too large, assume time correction
+@@ -1498,11 +1658,18 @@ int timekeeping_suspend(void)
+ }
+ 
+ /* sysfs resume/suspend bits for timekeeping */
++/**
++ * timekeepingµÄµçÔ´»Øµ÷º¯Êı
++ * ÔÚÆÕÍ¨µÄ×ÜÏßÉè±¸Ö®ºó½øĞĞ¹ÒÆğ
++ */
+ static struct syscore_ops timekeeping_syscore_ops = {
+ 	.resume		= timekeeping_resume,
+ 	.suspend	= timekeeping_suspend,
+ };
+ 
++/**
++ * ×¢²átimekeepingµÄµçÔ´»Øµ÷º¯Êı
++ */
+ static int __init timekeeping_init_ops(void)
+ {
+ 	register_syscore_ops(&timekeeping_syscore_ops);
+@@ -1905,6 +2072,9 @@ struct timespec64 current_kernel_time64(void)
+ }
+ EXPORT_SYMBOL(current_kernel_time64);
+ 
++/**
++ * »ñÈ¡µÍ¾«¶ÈµÄmonotonic clock
++ */
+ struct timespec64 get_monotonic_coarse64(void)
+ {
+ 	struct timekeeper *tk = &tk_core.timekeeper;
+@@ -1914,6 +2084,9 @@ struct timespec64 get_monotonic_coarse64(void)
+ 	do {
+ 		seq = read_seqcount_begin(&tk_core.seq);
+ 
++		/**
++		 * Ö±½ÓÈ¡wall time£¬¶øÃ»ÓĞ¿¼ÂÇoffset
++		 */
+ 		now = tk_xtime(tk);
+ 		mono = tk->wall_to_monotonic;
+ 	} while (read_seqcount_retry(&tk_core.seq, seq));
